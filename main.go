@@ -1,76 +1,29 @@
 package main
 
 import (
-	"encoding/json"
 	"io"
 	"log"
 	"net/http"
-	"os"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-type Config struct {
-	AWSAccessKeyID     string `json:"AWS_ACCESS_KEY_ID"`
-	AWSSecretAccessKey string `json:"AWS_SECRET_ACCESS_KEY"`
-	AWSRegion          string `json:"AWS_REGION"`
-	S3Bucket           string `json:"S3_BUCKET"`
-}
-
-func loadConfig(filename string) (Config, error) {
-	var config Config
-	configFile, err := os.Open(filename)
-	if err != nil {
-		return config, err
-	}
-	defer configFile.Close()
-	jsonParser := json.NewDecoder(configFile)
-	err = jsonParser.Decode(&config)
-	return config, err
-}
-
 func main() {
-	// Load AWS credentials and region from config file
-	config, err := loadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
-	}
-
-	// Create AWS session
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(config.AWSRegion),
-		Credentials: credentials.NewStaticCredentials(
-			config.AWSAccessKeyID,
-			config.AWSSecretAccessKey,
-			""),
-	})
-	if err != nil {
-		log.Fatalf("Failed to create AWS session: %v", err)
-	}
-
-	svc := s3.New(sess)
 
 	// HTTP handler to serve the image file
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fileKey := "laptop.jpeg"
+		// Replace this with your publicly accessible URL provided by S3
+		objectURL := "https://rankingalgo.s3.eu-north-1.amazonaws.com/laptop.jpeg"
 
-		// Get the object from S3
-		resp, err := svc.GetObject(&s3.GetObjectInput{
-			Bucket: aws.String(config.S3Bucket),
-			Key:    aws.String(fileKey),
-		})
+		// Fetch the object from S3
+		resp, err := http.Get(objectURL)
 		if err != nil {
-			log.Printf("Error getting object %s from bucket rankingalgo: %v", fileKey, err)
+			log.Printf("Error fetching object from S3: %v", err)
 			http.Error(w, "Failed to retrieve file", http.StatusInternalServerError)
 			return
 		}
 		defer resp.Body.Close()
 
-		// Set Content-Type header based on S3 response or your file type
-		w.Header().Set("Content-Type", aws.StringValue(resp.ContentType))
+		// Set Content-Type header based on the response from S3 or your file type
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 
 		// Copy object content directly to response writer
 		if _, err := io.Copy(w, resp.Body); err != nil {
