@@ -33,6 +33,6 @@ func main() {
 	})
 
 	// Start HTTP server
-	log.Println("Server listening on :8080")
+	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
