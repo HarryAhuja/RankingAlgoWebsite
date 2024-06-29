@@ -1,36 +1,28 @@
 package main
 
 import (
-	"io"
+	"context"
 	"log"
 	"net/http"
+	"rankingAlgoWebsite/db"
+	"rankingAlgoWebsite/handlers"
 )
 
 func main() {
 
-	// HTTP handler to serve the image file
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Replace this with your publicly accessible URL provided by S3
-		objectURL := "https://rankingalgo.s3.eu-north-1.amazonaws.com/laptop.jpeg"
+	db := db.ConfigureDB()
+	if db == nil {
+		log.Fatal("Failed to connect to database")
+	}
+	defer db.Close()
 
-		// Fetch the object from S3
-		resp, err := http.Get(objectURL)
-		if err != nil {
-			log.Printf("Error fetching object from S3: %v", err)
-			http.Error(w, "Failed to retrieve file", http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
+	imageHandler := handlers.ImageHandler{
+		Ctx: context.Background(),
+		DB:  db,
+	}
 
-		// Set Content-Type header based on the response from S3 or your file type
-		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-
-		// Copy object content directly to response writer
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			log.Printf("Error streaming file: %v", err)
-			http.Error(w, "Failed to stream file", http.StatusInternalServerError)
-		}
-	})
+	// Register handler for /get-product/ path
+	http.Handle("/get-product/", http.StripPrefix("/get-product/", imageHandler))
 
 	// Start HTTP server
 	log.Println("Server started on :8080")
