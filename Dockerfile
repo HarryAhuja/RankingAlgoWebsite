@@ -2,7 +2,7 @@ FROM golang:1.22.4-alpine3.20 AS builder
 
 # First stage -> copy all files from src to dst and build go binary
 WORKDIR /build
-COPY ../.. .
+COPY . .
 RUN go mod download
 RUN go build -o ./rankingalgo
 
